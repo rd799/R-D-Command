@@ -2366,20 +2366,20 @@ function openTaskDetail(id){
   }
 }
 function renderTaskDetail(id){
-  const t=S.tasks.find(x=>x.id===id);if(!t){closeTaskDetail();return;}
-  const proj=S.projects.find(p=>p.id===t.projId);
-  const phase=Object.values(S.phases).flat().find(ph=>ph.id===t.phaseId);
-  const assignee=S.users.find(u=>u.id===t.assignee);
+  const task=S.tasks.find(x=>x.id===id);if(!task){closeTaskDetail();return;}
+  const proj=S.projects.find(p=>p.id===task.projId);
+  const phase=Object.values(S.phases).flat().find(ph=>ph.id===task.phaseId);
+  const assignee=S.users.find(u=>u.id===task.assignee);
   const cmts=S.comments[id]||[];
-  const stDone=(t.subtasks||[]).filter(s=>s.done).length,stTotal=(t.subtasks||[]).length;
-  const canAddSubtask=S.cu?.role==='admin'||S.cu?.role==='lead'||t.assignee===S.cu?.id;
-  const canEditFields=S.cu?.role==='admin'||S.cu?.role==='lead'||t.assignee===S.cu?.id;
+  const stDone=(task.subtasks||[]).filter(s=>s.done).length,stTotal=(task.subtasks||[]).length;
+  const canAddSubtask=S.cu?.role==='admin'||S.cu?.role==='lead'||task.assignee===S.cu?.id;
+  const canEditFields=S.cu?.role==='admin'||S.cu?.role==='lead'||task.assignee===S.cu?.id;
   $('taskDetailPanel').innerHTML=`
     <div class="tdp-hdr">
       <div class="tdp-hdr-title" contenteditable="${canEditFields}" spellcheck="false"
         title="${canEditFields?'Click để sửa tên task':''}"
         onblur="if(${canEditFields})updateField('${id}','title',this.textContent.trim())"
-        id="tdp-task-title">${t.title}</div>
+        id="tdp-task-title">${task.title}</div>
       <button class="tdp-close" onclick="closeTaskDetail()">✕</button>
     </div>
     <div class="tdp-scroll">
@@ -2394,16 +2394,16 @@ function renderTaskDetail(id){
         <div>
           <div class="tdp-label">${t('tdStatus')}</div>
           <select class="tdp-select" id="tdp-status" onchange="updateField('${id}','status',this.value)">
-            <option value="todo" ${t.status==='todo'?'selected':''}>📋 ${t('stTodo')}</option>
-            <option value="in-progress" ${t.status==='in-progress'?'selected':''}>⚡ ${t('stInProg')}</option>
-            <option value="blocked" ${t.status==='blocked'?'selected':''}>🚨 ${t('stBlocked')}</option>
-            <option value="done" ${t.status==='done'?'selected':''}>✅ ${t('stDone')}</option>
+            <option value="todo" ${task.status==='todo'?'selected':''}>📋 ${t('stTodo')}</option>
+            <option value="in-progress" ${task.status==='in-progress'?'selected':''}>⚡ ${t('stInProg')}</option>
+            <option value="blocked" ${task.status==='blocked'?'selected':''}>🚨 ${t('stBlocked')}</option>
+            <option value="done" ${task.status==='done'?'selected':''}>✅ ${t('stDone')}</option>
           </select>
         </div>
         <div>
           <div class="tdp-label">${t('tdPriority')}</div>
           <select class="tdp-select" onchange="updateField('${id}','priority',this.value)">
-            ${['high','medium','low'].map(p=>`<option value="${p}" ${p===t.priority?'selected':''}>${PRI[p].ic} ${priLabel(p)}</option>`).join('')}
+            ${['high','medium','low'].map(p=>`<option value="${p}" ${p===task.priority?'selected':''}>${PRI[p].ic} ${priLabel(p)}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -2411,36 +2411,36 @@ function renderTaskDetail(id){
       <div class="tdp-section">
         <div class="tdp-label">🧩 ${t('tdComplex')}</div>
         <select class="tdp-select" onchange="updateField('${id}','complexity',this.value)">
-          ${['easy','medium','hard'].map(cx=>`<option value="${cx}" ${(cx===t.complexity||(!t.complexity&&cx==='medium'))?'selected':''}>${COMPLEXITY[cx].ic} ${complexityLabel(cx)}</option>`).join('')}
+          ${['easy','medium','hard'].map(cx=>`<option value="${cx}" ${(cx===task.complexity||(!task.complexity&&cx==='medium'))?'selected':''}>${COMPLEXITY[cx].ic} ${complexityLabel(cx)}</option>`).join('')}
         </select>
       </div>
       <!-- Tiến độ -->
       <div class="tdp-section">
-        <div class="tdp-label">${t('tdProgress')} — <span class="tdp-prog-val" id="tdp-prog-val">${t.prog}%</span></div>
-        <input type="range" min="0" max="100" value="${t.prog}" oninput="$('tdp-prog-val').textContent=this.value+'%'" onchange="updateField('${id}','prog',parseInt(this.value))">
+        <div class="tdp-label">${t('tdProgress')} — <span class="tdp-prog-val" id="tdp-prog-val">${task.prog}%</span></div>
+        <input type="range" min="0" max="100" value="${task.prog}" oninput="$('tdp-prog-val').textContent=this.value+'%'" onchange="updateField('${id}','prog',parseInt(this.value))">
       </div>
       <!-- Người thực hiện & Deadline -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
         <div>
           <div class="tdp-label">${t('tdAssignee')}</div>
           <select class="tdp-select" onchange="updateField('${id}','assignee',this.value)">
-            ${S.users.filter(u=>u.st==='active').map(u=>`<option value="${u.id}" ${u.id===t.assignee?'selected':''}>${u.name.split(' ').pop()}</option>`).join('')}
+            ${S.users.filter(u=>u.st==='active').map(u=>`<option value="${u.id}" ${u.id===task.assignee?'selected':''}>${u.name.split(' ').pop()}</option>`).join('')}
           </select>
         </div>
         <div>
           <div class="tdp-label">${t('tdDeadline')}</div>
-          <input type="date" class="tdp-date" value="${t.end||''}" onchange="updateField('${id}','end',this.value)">
+          <input type="date" class="tdp-date" value="${task.end||''}" onchange="updateField('${id}','end',this.value)">
         </div>
       </div>
       <!-- Mô tả -->
       <div class="tdp-section">
         <div class="tdp-label">${t('tdDesc')}</div>
-        <div class="tdp-edit ${t.desc?'':'empty'}" contenteditable="true" onblur="updateField('${id}','desc',this.textContent.trim())" style="min-height:50px">${t.desc||(LANG==='en'?'Add description...':'Thêm mô tả...')}</div>
+        <div class="tdp-edit ${task.desc?'':'empty'}" contenteditable="true" onblur="updateField('${id}','desc',this.textContent.trim())" style="min-height:50px">${task.desc||(LANG==='en'?'Add description...':'Thêm mô tả...')}</div>
       </div>
       <!-- Subtasks -->
       <div class="tdp-section">
         <div class="tdp-label">☑ ${LANG==='en'?'Subtasks':'Subtask'} <span style="font-weight:400;color:var(--tx4)">(${stDone}/${stTotal})</span></div>
-        <div id="tdp-subtasks">${buildSubtaskListHTML(t)}</div>
+        <div id="tdp-subtasks">${buildSubtaskListHTML(task)}</div>
         ${canAddSubtask?`<div class="st-add-form" id="st-add-form-${id}">
           <label class="st-form-label">${LANG==='en'?'New subtask name':'Tên subtask mới'}</label>
           <input class="st-form-inp" id="st-new-inp" placeholder="${LANG==='en'?'Describe the small task...':'Mô tả công việc nhỏ cần làm...'}" onkeydown="if(event.key==='Enter')addSubtask('${id}')">
@@ -2453,7 +2453,7 @@ function renderTaskDetail(id){
               <label class="st-form-label">${LANG==='en'?'Assign to':'Giao cho'}</label>
               <select class="st-form-inp" id="st-new-assignee">
                 <option value="">${LANG==='en'?'— Unassigned —':'— Không giao —'}</option>
-                ${S.users.filter(u=>u.st==='active').map(u=>`<option value="${u.id}" ${u.id===t.assignee?'selected':''}>${u.name}</option>`).join('')}
+                ${S.users.filter(u=>u.st==='active').map(u=>`<option value="${u.id}" ${u.id===task.assignee?'selected':''}>${u.name}</option>`).join('')}
               </select>
             </div>
             <div>
@@ -2466,7 +2466,7 @@ function renderTaskDetail(id){
             </div>
             <div>
               <label class="st-form-label">${LANG==='en'?'Deadline':'Deadline subtask'}</label>
-              <input type="date" class="st-form-inp" id="st-new-end" value="${t.end||''}">
+              <input type="date" class="st-form-inp" id="st-new-end" value="${task.end||''}">
             </div>
           </div>
           <div style="display:flex;justify-content:flex-end;margin-top:8px">
