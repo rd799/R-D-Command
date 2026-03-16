@@ -707,20 +707,23 @@ input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
     <!-- PANEL: ĐĂNG NHẬP -->
     <div class="login-form-wrap" id="panelLogin">
       <div class="lf-title">Đăng nhập</div>
-      <div class="lf-sub">Chọn tài khoản để vào hệ thống</div>
-      <div class="fg"><label class="fl" id="lbl-account">Tài khoản</label><select class="fi" id="lgUser" onchange="if(this.value)doLogin()"><option value="">— Chọn thành viên —</option></select></div>
-      <button class="btn-submit" onclick="doLogin()" id="btn-login">Đăng nhập →</button>
-      <p class="login-hint">Chọn tên → vào ngay, không cần mật khẩu</p>
-      <div style="margin-top:12px;padding:12px;background:var(--blue-l);border-radius:var(--r);border:1px solid var(--blue-m)">
-        <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:8px">⚡ Đăng nhập nhanh:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <button onclick="quickLogin('U1')" style="padding:5px 10px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f)">Nam (Admin)</button>
-          <button onclick="quickLogin('U2')" style="padding:5px 10px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f)">Anh (Lead)</button>
-          <button onclick="quickLogin('U3')" style="padding:5px 10px;background:var(--indigo);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f)">Hùng</button>
-          <button onclick="quickLogin('U4')" style="padding:5px 10px;background:var(--amber);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f)">Hà</button>
-          <button onclick="quickLogin('U5')" style="padding:5px 10px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f)">Minh</button>
+      <div class="lf-sub">Nhập thông tin tài khoản để vào hệ thống</div>
+      <div id="loginErrMsg"></div>
+      <div class="fg">
+        <label class="fl" id="lbl-account">Tài khoản</label>
+        <select class="fi" id="lgUser" onchange="prefillUsername()">
+          <option value="">— Chọn thành viên —</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Mật khẩu</label>
+        <div style="position:relative">
+          <input type="password" class="fi" id="lgPw" placeholder="Nhập mật khẩu..." style="padding-right:40px" onkeydown="if(event.key==='Enter')doLogin()">
+          <button onclick="togglePwVis()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px" id="pwVisBtn">👁</button>
         </div>
       </div>
+      <button class="btn-submit" onclick="doLogin()" id="btn-login">Đăng nhập →</button>
+      <p class="login-hint" style="margin-top:10px">Liên hệ Admin nếu quên mật khẩu</p>
       <p class="login-switch">Chưa có tài khoản? <a onclick="switchToRegister()">Đăng ký ngay →</a></p>
     </div>
 
@@ -783,6 +786,7 @@ input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
       <div class="sb-user">
         <div class="sb-av" id="sbAv"></div>
         <div><div class="sb-uname" id="sbName"></div><div class="sb-urole" id="sbRole"></div></div>
+        <button class="sb-logout" onclick="openChangePwModal()" title="Đổi mật khẩu" style="margin-right:2px">🔒</button>
         <button class="sb-logout" onclick="doLogout()" title="Đăng xuất">⏏</button>
       </div>
     </div>
@@ -1181,33 +1185,90 @@ input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
   <div class="modal-foot"><button class="btn btn-s" onclick="closeMod('mUser')">Hủy</button><button class="btn btn-p" onclick="saveUser()">✅ Lưu</button></div>
 </div></div>
 <!-- Add Task Modal -->
-<div class="modal-bg" id="mAddTask"><div class="modal" style="width:620px">
-  <div class="modal-hdr"><h3 id="mAddTaskH">+ Giao việc</h3><button class="modal-close" onclick="closeMod('mAddTask')">✕</button></div>
-  <div class="modal-body"><input type="hidden" id="atEditId">
-    <div class="fg-row">
-      <div class="fg"><label class="fl">Dự án</label><select class="fi" id="at_proj" onchange="fillAtPhases()"></select></div>
-      <div class="fg"><label class="fl">Giai đoạn</label><select class="fi" id="at_phase"><option value="">— Không có giai đoạn —</option></select></div>
+<div class="modal-bg" id="mAddTask"><div class="modal" style="width:700px">
+  <div class="modal-hdr"><h3 id="mAddTaskH">+ Giao việc mới</h3><button class="modal-close" onclick="closeMod('mAddTask')">✕</button></div>
+  <div class="modal-body" style="padding:20px 24px"><input type="hidden" id="atEditId">
+
+    <!-- Row 1: Project + Phase -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="fl">📁 Dự án <span style="color:var(--red)">*</span></label>
+        <select class="fi" id="at_proj" onchange="fillAtPhases()" style="font-weight:600">
+          <option value="">— Chọn dự án —</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">📌 Giai đoạn</label>
+        <select class="fi" id="at_phase">
+          <option value="">— Chọn giai đoạn —</option>
+        </select>
+      </div>
     </div>
-    <div class="fg"><label class="fl">Tên công việc</label><input type="text" class="fi" id="at_title" placeholder="Mô tả công việc cụ thể..."></div>
-    <div class="fg"><label class="fl">Mô tả & yêu cầu đầu ra</label><textarea class="fi" id="at_desc" rows="2" placeholder="Chi tiết nội dung, tiêu chí hoàn thành..."></textarea></div>
-    <div class="fg-row">
-      <div class="fg"><label class="fl">Giao cho</label><select class="fi" id="at_assignee"></select></div>
-      <div class="fg"><label class="fl">Ưu tiên</label><select class="fi" id="at_priority"><option value="high">🔴 Cao</option><option value="medium" selected>🟡 Trung bình</option><option value="low">🟢 Thấp</option></select></div>
+
+    <!-- Row 2: Task name (full width) -->
+    <div style="margin-bottom:14px">
+      <label class="fl">✏️ Tên công việc <span style="color:var(--red)">*</span></label>
+      <input type="text" class="fi" id="at_title" placeholder="Mô tả công việc cụ thể, rõ ràng...">
     </div>
-    <div class="fg-row">
-      <div class="fg"><label class="fl">Độ phức tạp</label><select class="fi" id="at_complexity">
-        <option value="easy">🟢 Dễ — Routine, thực hiện được ngay</option>
-        <option value="medium" selected>🟡 Trung bình — Cần phân tích, thử nghiệm</option>
-        <option value="hard">🔴 Phức tạp — Nghiên cứu chuyên sâu, nhiều biến số</option>
-      </select></div>
-      <div class="fg" style="margin:0"><label class="fl">Trạng thái</label><select class="fi" id="at_status"><option value="todo">Chưa bắt đầu</option><option value="in-progress">Đang thực hiện</option></select></div>
+
+    <!-- Row 3: Description -->
+    <div style="margin-bottom:14px">
+      <label class="fl">📝 Mô tả & Yêu cầu đầu ra</label>
+      <textarea class="fi" id="at_desc" rows="2" placeholder="Chi tiết nội dung, tiêu chí hoàn thành, tài liệu tham khảo..." style="resize:vertical"></textarea>
     </div>
-    <div class="fg-row">
-      <div class="fg"><label class="fl">Bắt đầu</label><input type="date" class="fi" id="at_start"></div>
-      <div class="fg" style="margin:0"><label class="fl">Deadline</label><input type="date" class="fi" id="at_end"></div>
+
+    <!-- Row 4: Assignee + Priority + Status -->
+    <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="fl">👤 Giao cho <span style="color:var(--red)">*</span></label>
+        <select class="fi" id="at_assignee" style="font-weight:600"></select>
+      </div>
+      <div>
+        <label class="fl">🔥 Ưu tiên</label>
+        <select class="fi" id="at_priority">
+          <option value="high">🔴 Cao</option>
+          <option value="medium" selected>🟡 Trung bình</option>
+          <option value="low">🟢 Thấp</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">📊 Trạng thái</label>
+        <select class="fi" id="at_status">
+          <option value="todo">📋 Chưa bắt đầu</option>
+          <option value="in-progress">⚡ Đang thực hiện</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Row 5: Complexity + Dates -->
+    <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin-bottom:6px">
+      <div>
+        <label class="fl">🧩 Độ phức tạp</label>
+        <select class="fi" id="at_complexity">
+          <option value="easy">🟢 Dễ — Routine, làm được ngay</option>
+          <option value="medium" selected>🟡 Trung bình — Cần phân tích</option>
+          <option value="hard">🔴 Phức tạp — Nghiên cứu chuyên sâu</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">📅 Ngày bắt đầu</label>
+        <input type="date" class="fi" id="at_start">
+      </div>
+      <div>
+        <label class="fl">⏰ Deadline <span style="color:var(--red)">*</span></label>
+        <input type="date" class="fi" id="at_end">
+      </div>
+    </div>
+
+    <!-- Helper text -->
+    <div style="padding:8px 12px;background:var(--blue-l);border-radius:var(--r);font-size:11.5px;color:var(--blue)">
+      💡 Sau khi tạo, bạn có thể thêm subtask và ghi chú chi tiết trong Task Detail Panel bên phải Workboard.
     </div>
   </div>
-  <div class="modal-foot"><button class="btn btn-s" onclick="closeMod('mAddTask')">Hủy</button><button class="btn btn-p" onclick="saveTsk()">✅ Lưu công việc</button></div>
+  <div class="modal-foot" style="gap:10px">
+    <button class="btn btn-s" onclick="closeMod('mAddTask')">Hủy</button>
+    <button class="btn btn-p" onclick="saveTsk()" style="min-width:130px">✅ Tạo công việc</button>
+  </div>
 </div></div>
 <!-- Add Phase Modal -->
 <div class="modal-bg" id="mAddPhase"><div class="modal" style="width:480px">
@@ -1568,7 +1629,23 @@ function priLabel(p){return LANG==='en'?(PRI[p]?.le||p):(PRI[p]?.l||p);}
 let S={cu:null,period:'week',users:[],projects:[],phases:{},tasks:[],comments:{},reports:{},goals:[],drafts:{},adminReports:{},activeTaskId:null};
 const $=id=>document.getElementById(id);
 // localStorage fallback (lưu session user + KPI weights)
-const lS=()=>{try{const d=localStorage.getItem(LSK);if(d){const p=JSON.parse(d);if(p.cu)S.cu=p.cu;}}catch(e){}};
+const lS=()=>{
+  try{
+    const d=localStorage.getItem(LSK);
+    if(d){
+      const p=JSON.parse(d);
+      if(p.cu){
+        // Verify session user still exists and pw matches
+        const liveUser=S.users.find(u=>u.id===p.cu.id);
+        if(liveUser){
+          S.cu=liveUser; // Use live data, not cached
+        } else {
+          localStorage.removeItem(LSK); // User deleted
+        }
+      }
+    }
+  }catch(e){}
+};
 const sS=()=>{}; // no-op, replaced by specific Supabase saves
 
 // ── Save helpers (gọi sau mỗi thao tác cụ thể)
@@ -1628,7 +1705,7 @@ async function saveAppState(key,val){
 function seedAll(){
   const COLS=['#2563eb','#0d9488','#6d28d9','#b45309','#c2410c'];
   S.users=[
-    {id:'U1',name:'Phạm Hoài Nam',un:'nam',pw:'123',em:'nam@rd.vn',role:'admin',st:'active',color:COLS[0]},
+    {id:'U1',name:'Phạm Hoài Nam',un:'nam',pw:'1234nsca',em:'nam@rd.vn',role:'admin',st:'active',color:COLS[0]},
     {id:'U2',name:'Trần Thị Minh Anh',un:'anh',pw:'123',em:'anh@rd.vn',role:'lead',st:'active',color:COLS[1]},
     {id:'U3',name:'Lê Đức Hùng',un:'hung',pw:'123',em:'hung@rd.vn',role:'researcher',st:'active',color:COLS[2]},
     {id:'U4',name:'Nguyễn Thị Thu Hà',un:'ha',pw:'123',em:'ha@rd.vn',role:'researcher',st:'active',color:COLS[3]},
@@ -1761,32 +1838,102 @@ document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e
 // AUTH
 // ════════════════════════════════════════════════
 function populateLgSel(){
-  const s=$('lgUser');s.innerHTML='<option value="">— Chọn thành viên —</option>';
-  S.users.filter(u=>u.st==='active').forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=`${u.name} (${ROLES[u.role]?.l||u.role})`;s.appendChild(o);});
+  const s=$('lgUser');
+  s.innerHTML='<option value="">— Chọn thành viên —</option>';
+  S.users.filter(u=>u.st==='active').forEach(u=>{
+    const o=document.createElement('option');
+    o.value=u.id;
+    o.textContent=`${u.name} (${ROLES[u.role]?.l||u.role})`;
+    s.appendChild(o);
+  });
+}
+function prefillUsername(){
+  // Auto-focus password field when user selected
+  const pw=$('lgPw');if(pw){pw.value='';pw.focus();}
+  const errEl=$('loginErrMsg');if(errEl)errEl.innerHTML='';
+}
+function togglePwVis(){
+  const inp=$('lgPw');const btn=$('pwVisBtn');
+  if(!inp)return;
+  inp.type=inp.type==='password'?'text':'password';
+  if(btn)btn.textContent=inp.type==='password'?'👁':'🙈';
 }
 function doLogin(){
   const uid=$('lgUser').value;
-  if(!uid) return;
+  const pw=$('lgPw')?.value||'';
+  const errEl=$('loginErrMsg');
+  const showErr=(msg)=>{if(errEl)errEl.innerHTML=`<div style="padding:9px 12px;background:var(--red-l);color:var(--red);border:1px solid var(--red-m);border-radius:var(--r);font-size:12.5px;margin-bottom:12px;font-weight:600">⚠️ ${msg}</div>`;};
+  if(!uid){showErr('Vui lòng chọn tài khoản.');return;}
+  if(!pw){showErr('Vui lòng nhập mật khẩu.');return;}
   if(!S.users||!S.users.length) seedAll();
   const u=S.users.find(x=>x.id===uid);
-  if(!u){alert('Account not found!');return;}
-  S.cu=u;localStorage.setItem('rdcc_v4',JSON.stringify({cu:u}));
+  if(!u){showErr('Tài khoản không tồn tại.');return;}
+  if(u.pw!==pw){
+    showErr('Mật khẩu không đúng. Liên hệ Admin để được hỗ trợ.');
+    const inp=$('lgPw');if(inp){inp.value='';inp.focus();}
+    return;
+  }
+  if(errEl)errEl.innerHTML='';
+  S.cu=u;
+  localStorage.setItem('rdcc_v4',JSON.stringify({cu:u}));
   $('loginScreen').style.display='none';
   $('app').classList.add('on');
   bootUI();
   nav('overview');
 }
 function quickLogin(uid){
+  // Keep for dev convenience but now requires password check bypass
   if(!S.users||!S.users.length) seedAll();
   const u=S.users.find(x=>x.id===uid);
   if(!u) return;
   S.cu=u;
+  localStorage.setItem('rdcc_v4',JSON.stringify({cu:u}));
   $('loginScreen').style.display='none';
   $('app').classList.add('on');
   bootUI();
   nav('overview');
 }
-function doLogout(){S.cu=null;localStorage.removeItem('rdcc_v4');$('app').classList.remove('on');$('loginScreen').style.display='flex';populateLgSel();}
+function doLogout(){
+  S.cu=null;
+  localStorage.removeItem('rdcc_v4');
+  $('app').classList.remove('on');
+  $('loginScreen').style.display='flex';
+  const pw=$('lgPw');if(pw)pw.value='';
+  const errEl=$('loginErrMsg');if(errEl)errEl.innerHTML='';
+  populateLgSel();
+}
+
+// ── CHANGE PASSWORD ──
+function openChangePwModal(){
+  const html=`
+    <div id="cpErrMsg"></div>
+    <div class="fg"><label class="fl">Mật khẩu hiện tại</label><input type="password" class="fi" id="cp_old" placeholder="Nhập mật khẩu hiện tại"></div>
+    <div class="fg"><label class="fl">Mật khẩu mới</label><input type="password" class="fi" id="cp_new" placeholder="Ít nhất 4 ký tự"></div>
+    <div class="fg" style="margin-bottom:0"><label class="fl">Xác nhận mật khẩu mới</label><input type="password" class="fi" id="cp_confirm" placeholder="Nhập lại mật khẩu mới"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button class="btn btn-s" onclick="closeMod('mDetail')">Hủy</button>
+      <button class="btn btn-p" onclick="saveChangePw()">🔒 Đổi mật khẩu</button>
+    </div>`;
+  $('mDetailTitle').textContent='🔒 Đổi mật khẩu';
+  $('mDetailBody').innerHTML=html;
+  openMod('mDetail');
+}
+function saveChangePw(){
+  const old=$('cp_old')?.value;
+  const nw=$('cp_new')?.value;
+  const conf=$('cp_confirm')?.value;
+  const errEl=$('cpErrMsg');
+  const showErr=(msg)=>{if(errEl)errEl.innerHTML=`<div style="padding:8px 12px;background:var(--red-l);color:var(--red);border-radius:var(--r);font-size:12px;margin-bottom:12px">⚠️ ${msg}</div>`;};
+  if(old!==S.cu?.pw){showErr('Mật khẩu hiện tại không đúng.');return;}
+  if(!nw||nw.length<4){showErr('Mật khẩu mới cần ít nhất 4 ký tự.');return;}
+  if(nw!==conf){showErr('Mật khẩu xác nhận không khớp.');return;}
+  const u=S.users.find(x=>x.id===S.cu.id);
+  if(u){u.pw=nw;S.cu.pw=nw;}
+  sbUpsert('rd_users',{id:S.cu.id,name:S.cu.name,un:S.cu.un,pw:nw,em:S.cu.em||null,role:S.cu.role,st:S.cu.st,color:S.cu.color}).catch(e=>console.error(e));
+  localStorage.setItem('rdcc_v4',JSON.stringify({cu:S.cu}));
+  closeMod('mDetail');
+  toast('✅ Đã đổi mật khẩu thành công!','ok');
+}
 function bootUI(){
   const u=S.cu;
   $('sbAv').textContent=ini(u.name);$('sbAv').style.background=u.color;
@@ -2689,37 +2836,115 @@ function toggleBudgetPanel(panelId){
 
 // Add task/phase modals
 function openAddTaskModal(){
-  $('atEditId').value='';$('mAddTaskH').textContent='+ Giao việc';
-  $('at_proj').innerHTML=S.projects.map(p=>`<option value="${p.id}">${p.title.slice(0,40)}</option>`).join('');
+  $('atEditId').value='';
+  $('mAddTaskH').textContent='+ Giao việc mới';
+  $('at_proj').innerHTML='<option value="">— Chọn dự án —</option>'+
+    S.projects.filter(p=>['active','planned'].includes(p.st)).map(p=>`<option value="${p.id}">${p.title.slice(0,40)}</option>`).join('');
   $('at_assignee').innerHTML=S.users.filter(u=>u.st==='active').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
   $('at_start').value=new Date().toISOString().slice(0,10);
-  fillAtPhases();openMod('mAddTask');
+  $('at_end').value='';
+  $('at_title').value='';
+  $('at_desc').value='';
+  fillAtPhases();
+  openMod('mAddTask');
+  setTimeout(()=>{const t=$('at_title');if(t)t.focus();},100);
 }
 function openAddTaskWithPhase(projId,phaseId){
-  openAddTaskModal();$('at_proj').value=projId;fillAtPhases();setTimeout(()=>{$('at_phase').value=phaseId;},60);
+  openAddTaskModal();
+  $('at_proj').value=projId;
+  fillAtPhases();
+  setTimeout(()=>{$('at_phase').value=phaseId;},80);
 }
 function fillAtPhases(){
-  const pid=$('at_proj')?.value;const phases=(S.phases[pid]||[]);
-  $('at_phase').innerHTML=phases.length?phases.map(ph=>`<option value="${ph.id}">${ph.name}</option>`):`<option value="">— Không có giai đoạn —</option>`;
+  const pid=$('at_proj')?.value;
+  const phases=pid?(S.phases[pid]||[]):[];
+  $('at_phase').innerHTML=phases.length
+    ? `<option value="">— Chọn giai đoạn (tuỳ chọn) —</option>`+phases.map(ph=>`<option value="${ph.id}">${ph.name}</option>`).join('')
+    : `<option value="">— Chưa có giai đoạn —</option>`;
 }
 function saveTsk(){
   const eid=$('atEditId').value;
-  const t={id:eid||'T'+Date.now(),projId:$('at_proj').value,phaseId:$('at_phase').value,title:$('at_title').value,desc:$('at_desc').value,assignee:$('at_assignee').value,priority:$('at_priority').value,complexity:$('at_complexity')?.value||'medium',status:$('at_status').value,start:$('at_start').value,end:$('at_end').value,prog:0,subtasks:[],wk:CW};
-  if(!t.title){toast('Nhập tên công việc','err');return;}
-  if(eid){const i=S.tasks.findIndex(x=>x.id===eid);if(i>=0)S.tasks[i]=t;}
-  else S.tasks.push(t);
-  saveTask(t).catch(e=>console.error('save task err',e));
-  closeMod('mAddTask');renderWorkboard();toast('Đã lưu công việc ✅','ok');
+  const projId=$('at_proj').value;
+  const title=$('at_title')?.value?.trim();
+  const assignee=$('at_assignee').value;
+  const endDate=$('at_end').value;
+
+  // Validation
+  if(!projId){toast('Vui lòng chọn dự án','err');$('at_proj').focus();return;}
+  if(!title){toast('Vui lòng nhập tên công việc','err');$('at_title').focus();return;}
+  if(!assignee){toast('Vui lòng chọn người thực hiện','err');$('at_assignee').focus();return;}
+  if(!endDate){toast('Vui lòng nhập deadline','err');$('at_end').focus();return;}
+
+  const task={
+    id:eid||'T'+Date.now(),
+    projId,
+    phaseId:$('at_phase').value||null,
+    title,
+    desc:$('at_desc')?.value||'',
+    assignee,
+    priority:$('at_priority').value||'medium',
+    complexity:$('at_complexity')?.value||'medium',
+    status:$('at_status').value||'todo',
+    start:$('at_start').value||new Date().toISOString().slice(0,10),
+    end:endDate,
+    prog:0,subtasks:[],wk:CW
+  };
+
+  if(eid){
+    const i=S.tasks.findIndex(x=>x.id===eid);
+    if(i>=0)S.tasks[i]={...S.tasks[i],...task};
+  } else {
+    S.tasks.push(task);
+  }
+
+  saveTask(task).catch(e=>console.error('save task err',e));
+  closeMod('mAddTask');
+  renderWorkboard();
+
+  // Open task detail after creation
+  setTimeout(()=>{
+    openTaskDetail(task.id);
+    const row=$('trow-'+task.id);
+    if(row)row.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },200);
+
+  toast(`✅ Đã tạo công việc: ${title.slice(0,30)}`,'ok');
 }
-function openAddPhaseModal(projId){$('apProjId').value=projId;$('ap_name').value='';$('ap_start').value=new Date().toISOString().slice(0,10);openMod('mAddPhase');}
-function savePhase(){
-  const pid=$('apProjId').value;const name=$('ap_name').value;
+function openAddPhaseModal(projId){
+  $('apProjId').value=projId;
+  $('ap_name').value='';
+  if($('ap_start'))$('ap_start').value=new Date().toISOString().slice(0,10);
+  if($('ap_end'))$('ap_end').value='';
+  const p=S.projects.find(x=>x.id===projId);
+  const mh=$('mAddPhase')?.querySelector('h3');
+  if(mh)mh.textContent=`+ Giai đoạn — ${p?.title?.slice(0,30)||''}`;
+  openMod('mAddPhase');
+  setTimeout(()=>{const n=$('ap_name');if(n)n.focus();},100);
+}
+async function savePhase(){
+  const pid=$('apProjId').value;
+  const name=$('ap_name')?.value?.trim();
   if(!name){toast('Nhập tên giai đoạn','err');return;}
+  if(!pid){toast('Lỗi: không xác định được dự án','err');return;}
   if(!S.phases[pid])S.phases[pid]=[];
-  const newPh={id:'PH'+Date.now(),projId:pid,name,start:$('ap_start').value,end:$('ap_end').value};
+  const newPh={
+    id:'PH'+Date.now(),
+    projId:pid,
+    name,
+    start:$('ap_start')?.value||'',
+    end:$('ap_end')?.value||''
+  };
   S.phases[pid].push(newPh);
-  sbUpsert('rd_phases',{id:newPh.id,proj_id:pid,name,ord:S.phases[pid].length}).catch(e=>console.error(e));
-  closeMod('mAddPhase');renderWorkboard();toast('Đã thêm giai đoạn ✅','ok');
+  closeMod('mAddPhase');
+  renderWorkboard();
+  toast('Đang lưu giai đoạn...','info');
+  try {
+    await sbUpsert('rd_phases',{id:newPh.id,proj_id:pid,name,ord:S.phases[pid].length,start_date:newPh.start||null,end_date:newPh.end||null});
+    toast('✅ Đã thêm giai đoạn: '+name,'ok');
+  } catch(e){
+    console.error('savePhase error:',e);
+    toast('⚠️ Lưu lên server thất bại (dữ liệu vẫn hiển thị tạm thời): '+e.message,'warn');
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -4979,13 +5204,18 @@ function renderMembers(){
 
   $('membBody').innerHTML=S.users.map(u=>{
     const lastRpt=allRpts().filter(r=>r.uid===u.id).sort((a,b)=>new Date(b.at||0)-new Date(a.at||0))[0];
+    const isSelf=u.id===S.cu?.id;
     return `<tr>
-      <td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:7px;background:${u.color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">${ini(u.name)}</div><span style="font-weight:700">${u.name}</span></div></td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:7px;background:${u.color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">${ini(u.name)}</div><span style="font-weight:700">${u.name}</span>${isSelf?`<span class="badge b-blue" style="font-size:9px">Tôi</span>`:''}</div></td>
       <td style="font-family:var(--mono);font-size:12px">${u.un}</td>
       <td><span class="badge" style="background:${ROLES[u.role]?.bg};color:${ROLES[u.role]?.c}">${roleLabel(u.role)}</span></td>
       <td><span class="badge ${u.st==='active'?'b-green':'b-gray'}">${u.st==='active'?t('stActive'):t('stInactive')}</span></td>
       <td style="font-size:11.5px;color:var(--tx3)">${lastRpt?fmtDT(lastRpt.at):(LANG==='en'?'None yet':'Chưa có')}</td>
-      <td>${isAdmin?`<button class="btn btn-g btn-xs" onclick="editUser('${u.id}')">${t('membEdit')}</button>`:''}</td>
+      <td>${isAdmin?`<div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-g btn-xs" onclick="editUser('${u.id}')">${t('membEdit')}</button>
+        ${!isSelf?`<button class="btn btn-d btn-xs" onclick="deleteUser('${u.id}')" title="Xóa thành viên">🗑</button>`:'<span style="width:30px"></span>'}
+      </div>`:''}
+      </td>
     </tr>`;
   }).join('');
 }
@@ -4993,10 +5223,38 @@ function openUserModal(){$('euId').value='';$('mUserH').textContent='+ Thêm th�
 function editUser(id){const u=S.users.find(x=>x.id===id);if(!u)return;$('euId').value=id;$('mUserH').textContent='Chỉnh sửa';$('u_name').value=u.name;$('u_un').value=u.un;$('u_em').value=u.em||'';$('u_pw').value=u.pw||'123';$('u_role').value=u.role;$('u_st').value=u.st;openMod('mUser');}
 function saveUser(){
   const eid=$('euId').value;const cols=['#2563eb','#0d9488','#6d28d9','#b45309','#c2410c','#be185d'];
-  if(eid){const u=S.users.find(x=>x.id===eid);if(u){u.name=$('u_name').value;u.un=$('u_un').value;u.em=$('u_em').value;u.pw=$('u_pw').value;u.role=$('u_role').value;u.st=$('u_st').value;}toast('Cập nhật ✅','ok');}
-  else{if(!$('u_name').value){toast('Nhập họ tên','err');return;}S.users.push({id:'U'+Date.now(),name:$('u_name').value,un:$('u_un').value,em:$('u_em').value,pw:$('u_pw').value,role:$('u_role').value,st:$('u_st').value,color:cols[S.users.length%cols.length]});toast('Đã thêm ✅','ok');}
-  sbUpsert('rd_users',{id:u.id,name:u.name,un:u.un,pw:u.pw,em:u.em||null,role:u.role,st:u.st,color:u.color}).catch(e=>console.error(e));
+  if(eid){
+    const u=S.users.find(x=>x.id===eid);
+    if(u){u.name=$('u_name').value;u.un=$('u_un').value;u.em=$('u_em').value;u.pw=$('u_pw').value;u.role=$('u_role').value;u.st=$('u_st').value;}
+    sbUpsert('rd_users',{id:u.id,name:u.name,un:u.un,pw:u.pw,em:u.em||null,role:u.role,st:u.st,color:u.color}).catch(e=>console.error(e));
+    toast('Cập nhật ✅','ok');
+  } else {
+    if(!$('u_name').value){toast('Nhập họ tên','err');return;}
+    const newU={id:'U'+Date.now(),name:$('u_name').value,un:$('u_un').value,em:$('u_em').value,pw:$('u_pw').value||'123',role:$('u_role').value,st:$('u_st').value,color:cols[S.users.length%cols.length]};
+    S.users.push(newU);
+    sbUpsert('rd_users',{id:newU.id,name:newU.name,un:newU.un,pw:newU.pw,em:newU.em||null,role:newU.role,st:newU.st,color:newU.color}).catch(e=>console.error(e));
+    toast('Đã thêm ✅','ok');
+  }
   closeMod('mUser');renderMembers();populateLgSel();
+}
+async function deleteUser(uid){
+  const u=S.users.find(x=>x.id===uid);
+  if(!u)return;
+  if(uid===S.cu?.id){toast('Không thể xóa tài khoản đang đăng nhập!','err');return;}
+  const hasTasks=S.tasks.some(t=>t.assignee===uid);
+  const confirmMsg=hasTasks
+    ? `Xóa thành viên "${u.name}"?\n⚠️ Thành viên này đang được giao ${S.tasks.filter(t=>t.assignee===uid).length} task. Task sẽ không bị xóa nhưng sẽ không có người thực hiện.`
+    : `Xóa thành viên "${u.name}"? Hành động này không thể hoàn tác.`;
+  if(!confirm(confirmMsg))return;
+  S.users=S.users.filter(x=>x.id!==uid);
+  try {
+    await sbDelete('rd_users','id=eq.'+uid);
+    toast(`✅ Đã xóa thành viên ${u.name}`,'ok');
+  } catch(e){
+    console.error('deleteUser error:',e);
+    toast('⚠️ Xóa trên server thất bại: '+e.message,'warn');
+  }
+  renderMembers();populateLgSel();
 }
 
 // ════════════════════════════════════════════════
@@ -6385,7 +6643,13 @@ async function loadFromSupabase(){
       await pushSeedToSupabase();
     } else {
       // Map Supabase rows → S state
-      S.users=users.map(u=>({id:u.id,name:u.name,un:u.un,pw:u.pw,em:u.em,role:u.role,st:u.st,color:u.color}));
+      S.users=users.map(u=>({id:u.id,name:u.name,un:u.un,pw:u.pw||'123',em:u.em,role:u.role,st:u.st,color:u.color}));
+      // Auto-migrate admin pw if still old default
+      const adminUser=S.users.find(u=>u.role==='admin'&&u.pw==='123');
+      if(adminUser){
+        adminUser.pw='1234nsca';
+        sbUpsert('rd_users',{id:adminUser.id,name:adminUser.name,un:adminUser.un,pw:'1234nsca',em:adminUser.em||null,role:adminUser.role,st:adminUser.st,color:adminUser.color}).catch(e=>console.warn('pw migrate:',e));
+      }
       S.projects=projects.map(p=>({
         id:p.id,title:p.title,cat:p.cat,owner:p.owner,
         start:p.start_date,end:p.end_date,prog:p.prog,planProg:p.plan_prog,st:p.st,
