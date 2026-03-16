@@ -1936,13 +1936,29 @@ function saveChangePw(){
 }
 function bootUI(){
   const u=S.cu;
+  if(!u)return;
   $('sbAv').textContent=ini(u.name);$('sbAv').style.background=u.color;
   $('sbName').textContent=u.name;$('sbRole').textContent=ROLES[u.role]?.l||u.role;
   const isL=['admin','lead'].includes(u.role);
-  if(u.role==='admin'){$('sbAdminGrp').style.display='block';$('sbMembers').style.display='flex';$('sbAdminReport').style.display='flex';$('sbArchive').style.display='flex';$('sbKpiSetup').style.display='flex';$('sbRegApprove').style.display='flex';$('addGoalBtn').style.display='inline-flex';$('addProjBtn').style.display='inline-flex';loadPendingRegsBadge();}
-  // Show attendance badge if user hasn't checked in today
+  const canCreate=u.role!=='observer'; // researcher, lead, admin can create tasks
+
+  // Admin-only items
+  if(u.role==='admin'){
+    $('sbAdminGrp').style.display='block';
+    ['sbMembers','sbAdminReport','sbArchive','sbKpiSetup','sbRegApprove'].forEach(id=>{const el=$(id);if(el)el.style.display='flex';});
+    const ag=$('addGoalBtn');if(ag)ag.style.display='inline-flex';
+    const ap=$('addProjBtn');if(ap)ap.style.display='inline-flex';
+    loadPendingRegsBadge();
+  }
+  // Lead can also add projects
+  if(u.role==='lead'){
+    const ap=$('addProjBtn');if(ap)ap.style.display='inline-flex';
+  }
+  // All non-observer can assign tasks
+  if(canCreate){
+    const btn=$('wbAddTaskBtn');if(btn)btn.style.display='inline-flex';
+  }
   updateAttBadge();
-  if(isL){$('wbAddTaskBtn').style.display='inline-flex';}
   fillWeekSels();checkBadges();
 }
 function fillWeekSels(){
@@ -2376,6 +2392,7 @@ function buildProjNode(p,pfV,ufV,sfV){
   const pTasks=S.tasks.filter(t=>t.projId===p.id&&(!ufV||t.assignee===ufV)&&(!sfV||t.status===sfV));
   const blocked=pTasks.filter(t=>t.status==='blocked').length;
   const isL=['admin','lead'].includes(S.cu?.role);
+  const canCreate=S.cu?.role!=='observer';
   const node=document.createElement('div');node.className='proj-node';node.id='pnode-'+p.id;
   node.innerHTML=`
     <div class="pn-hdr" onclick="openProjectDetail('${p.id}');toggleNode(this,'pn-body-${p.id}')">
@@ -2395,12 +2412,13 @@ function buildProjNode(p,pfV,ufV,sfV){
       </div>
     </div>
     <div class="phase-list" id="pn-body-${p.id}">
-      ${phases.length?phases.map(ph=>buildPhaseHTML(ph,ufV,sfV,isL)).join(''):`<div style="padding:12px 16px 12px 36px;font-size:12px;color:var(--tx4)">Chưa có giai đoạn. ${isL?`<button class="btn btn-g btn-xs" onclick="openAddPhaseModal('${p.id}')">Thêm giai đoạn</button>`:''}</div>`}
+      ${phases.length?phases.map(ph=>buildPhaseHTML(ph,ufV,sfV,isL,canCreate)).join(''):`<div style="padding:12px 16px 12px 36px;font-size:12px;color:var(--tx4)">Chưa có giai đoạn. ${isL?`<button class="btn btn-g btn-xs" onclick="openAddPhaseModal('${p.id}')">Thêm giai đoạn</button>`:''}</div>`}
     </div>`;
   return node;
 }
 
-function buildPhaseHTML(ph,ufV,sfV,isL){
+function buildPhaseHTML(ph,ufV,sfV,isL,canCreate){
+  canCreate=canCreate!==undefined?canCreate:(S.cu?.role!=='observer');
   const tasks=S.tasks.filter(t=>t.phaseId===ph.id&&(!ufV||t.assignee===ufV)&&(!sfV||t.status===sfV));
   const done=tasks.filter(t=>t.status==='done').length;
   const blocked=tasks.filter(t=>t.status==='blocked').length;
@@ -2419,7 +2437,7 @@ function buildPhaseHTML(ph,ufV,sfV,isL){
     </div>
     <div class="task-list" id="ph-body-${ph.id}">
       ${tasks.length?tasks.map(t=>buildTaskRowHTML(t)).join(''):`<div style="padding:9px 16px 9px 48px;font-size:12px;color:var(--tx4)">Chưa có công việc trong giai đoạn này</div>`}
-      ${isL?`<div class="add-task-row" onclick="openAddTaskWithPhase('${ph.projId}','${ph.id}')">＋ Giao việc cho giai đoạn này</div>`:''}
+      ${canCreate?`<div class="add-task-row" onclick="openAddTaskWithPhase('${ph.projId}','${ph.id}')">＋ Giao việc cho giai đoạn này</div>`:''}
     </div>
   </div>`;
 }
@@ -6622,19 +6640,28 @@ function resetAllKpi(){
 // ═══════════════════════════════════════════
 async function loadFromSupabase(){
   showLoading('Đang kết nối Supabase...');
+
+  // Safety timeout: if loading takes > 12s, show error with retry button
+  const loadTimeout=setTimeout(()=>{
+    hideLoading();
+    showError('⏱ Tải dữ liệu quá lâu. Có thể do mạng chậm hoặc Supabase timeout.<br><small>Thử tải lại trang (F5)</small>');
+  }, 12000);
+
   try {
-    // Load all tables in parallel
+    // Load all tables in parallel with individual error handling
     const [users,projects,phases,tasks,comments,goals,reports,adminRpts,appState]=await Promise.all([
-      sbGet('rd_users','order=id'),
-      sbGet('rd_projects','order=id'),
-      sbGet('rd_phases','order=ord'),
-      sbGet('rd_tasks','order=created_at'),
-      sbGet('rd_comments','order=at'),
-      sbGet('rd_goals','order=id'),
-      sbGet('rd_reports','order=wk'),
-      sbGet('rd_admin_reports','order=wk'),
-      sbGet('rd_app_state',''),
+      sbGet('rd_users','order=id').catch(()=>[]),
+      sbGet('rd_projects','order=id').catch(()=>[]),
+      sbGet('rd_phases','order=ord').catch(()=>[]),
+      sbGet('rd_tasks','order=created_at').catch(()=>[]),
+      sbGet('rd_comments','order=at').catch(()=>[]),
+      sbGet('rd_goals','order=id').catch(()=>[]),
+      sbGet('rd_reports','order=wk').catch(()=>[]),
+      sbGet('rd_admin_reports','order=wk').catch(()=>[]),
+      sbGet('rd_app_state','').catch(()=>[]),
     ]);
+
+    clearTimeout(loadTimeout);
 
     if(!users||users.length===0){
       // First run — seed data into Supabase
@@ -6725,10 +6752,30 @@ async function loadFromSupabase(){
       nav('overview');
     }
   } catch(e) {
+    clearTimeout(loadTimeout);
     console.error('Supabase load error:',e);
     hideLoading();
-    showError('Không thể kết nối Supabase. Kiểm tra kết nối mạng.<br><small>'+e.message+'</small>');
+    showError(`Không thể tải dữ liệu từ Supabase.<br><small>${e.message}</small><br><br>
+      <button onclick="location.reload()" style="background:#fff;color:#dc2626;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;margin-right:8px">🔄 Tải lại trang</button>
+      <button onclick="loadOffline()" style="background:rgba(255,255,255,.3);color:#fff;border:1px solid rgba(255,255,255,.5);padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer">📂 Dùng dữ liệu mẫu</button>`);
   }
+}
+
+// Offline fallback — use seed data without Supabase
+function loadOffline(){
+  const el=$('sbError');if(el)el.remove();
+  seedAll();
+  hideLoading();
+  lS();
+  populateLgSel();
+  fillWeekSels();
+  if(S.cu&&S.users.find(u=>u.id===S.cu.id)){
+    $('loginScreen').style.display='none';
+    $('app').classList.add('on');
+    bootUI();
+    nav('overview');
+  }
+  toast('⚠️ Đang dùng dữ liệu mẫu (offline). Thay đổi không được lưu lên server.','warn');
 }
 
 async function pushSeedToSupabase(){
